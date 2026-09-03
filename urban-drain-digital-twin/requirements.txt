@@ -1,0 +1,27 @@
+# Urban Drain Digital Twin - Python dependencies
+#
+# NOTE ON VERSIONS
+# ----------------
+# These are deliberately NOT pinned to exact versions.
+#
+# An exact pin like "numpy==2.2.1" only has prebuilt wheels for the Python
+# versions that existed when it was released. On a newer Python, pip finds no
+# wheel, falls back to COMPILING numpy from C source, and fails on any machine
+# without a C++ compiler installed - which is most Windows machines.
+#
+# Minimum bounds let pip pick the newest release that actually ships a wheel
+# for whatever Python you have. Install is then a fast download, not a build.
+
+fastapi>=0.110          # the web API
+uvicorn>=0.27           # the server that runs it
+#
+# Deliberately plain "uvicorn", not "uvicorn[standard]". The [standard] extras
+# pull in uvloop, httptools and watchfiles - three more compiled C extensions,
+# and three more chances to hit the same no-wheel problem. They only add speed
+# and auto-reload, neither of which a demo needs.
+
+numpy>=1.26             # array maths for the hydraulic model
+pandas>=2.0             # the training data table
+scikit-learn>=1.3       # the gradient-boosted models
+joblib>=1.3             # saving and loading trained models
+networkx>=3.0           # the road graph and shortest-path search
