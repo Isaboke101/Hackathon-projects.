@@ -1,0 +1,151 @@
+{
+  "classifier": {
+    "accuracy": 0.9939,
+    "roc_auc": 0.9998,
+    "precision": 0.9838,
+    "recall": 0.9874,
+    "f1": 0.9856,
+    "confusion_matrix": [
+      [
+        31757,
+        140
+      ],
+      [
+        108,
+        8495
+      ]
+    ],
+    "test_flood_rate": 0.2124,
+    "baselines": {
+      "majority_class": {
+        "accuracy": 0.7876,
+        "f1": 0.0
+      },
+      "rule_of_thumb": {
+        "accuracy": 0.4443,
+        "f1": 0.4333
+      },
+      "tuned_threshold": {
+        "threshold": 3.0,
+        "accuracy": 0.76,
+        "f1": 0.5868
+      }
+    }
+  },
+  "regressor": {
+    "mae_m": 0.0059,
+    "r2": 0.9965,
+    "mae_on_flooded_m": 0.0153
+  },
+  "speed": {
+    "single_storm": {
+      "physics_ms": 13.99,
+      "surrogate_ms": 19.36,
+      "note": "Comparable. Our simplified simulator is already fast enough for one storm, so the surrogate buys no speed here - we say so."
+    },
+    "ensemble_1000_storms": {
+      "physics_s": 11.72,
+      "surrogate_s": 2.599,
+      "speedup": 4.5,
+      "note": "This is the operational case: scoring a full ensemble of possible storms. The surrogate scores the whole batch in one vectorised pass."
+    }
+  },
+  "honest_caveat": "The classifier is a SURROGATE: it is trained to reproduce our own physics simulation, which is deterministic. Near-perfect scores are the expected and correct result - they show the surrogate faithfully learned the simulator, NOT that we can predict real Nairobi floods to 99% accuracy. Real-world accuracy depends entirely on how well the simulator is calibrated to the real network, which needs survey data and rain-gauge records we do not yet have.",
+  "feature_importance": [
+    {
+      "feature": "total_rainfall_mm",
+      "importance": 0.14803
+    },
+    {
+      "feature": "demand_capacity_ratio",
+      "importance": 0.10718
+    },
+    {
+      "feature": "ponding_area_m2",
+      "importance": 0.01293
+    },
+    {
+      "feature": "outflow_slope",
+      "importance": 0.00985
+    },
+    {
+      "feature": "capacity_per_ha",
+      "importance": 0.00465
+    },
+    {
+      "feature": "contributing_area_ha",
+      "importance": 0.00339
+    },
+    {
+      "feature": "peak_intensity_mmhr",
+      "importance": 0.00123
+    },
+    {
+      "feature": "antecedent_saturation",
+      "importance": 0.00111
+    },
+    {
+      "feature": "area_ha",
+      "importance": 0.00084
+    },
+    {
+      "feature": "duration_min",
+      "importance": 0.0008
+    },
+    {
+      "feature": "outflow_capacity_m3s",
+      "importance": 0.00052
+    },
+    {
+      "feature": "outflow_diameter_m",
+      "importance": 0.0004
+    },
+    {
+      "feature": "imperviousness",
+      "importance": 0.00034
+    },
+    {
+      "feature": "blockage_factor",
+      "importance": 0.00024
+    },
+    {
+      "feature": "elevation_m",
+      "importance": 0.00023
+    },
+    {
+      "feature": "direct_upstream_count",
+      "importance": 0.00019
+    },
+    {
+      "feature": "runoff_coeff",
+      "importance": -0.0
+    }
+  ],
+  "training": {
+    "train_rows": 162000,
+    "test_rows": 40500,
+    "train_storms": 2000,
+    "test_storms": 500,
+    "features": [
+      "area_ha",
+      "imperviousness",
+      "runoff_coeff",
+      "contributing_area_ha",
+      "outflow_capacity_m3s",
+      "outflow_diameter_m",
+      "outflow_slope",
+      "capacity_per_ha",
+      "elevation_m",
+      "ponding_area_m2",
+      "direct_upstream_count",
+      "peak_intensity_mmhr",
+      "duration_min",
+      "total_rainfall_mm",
+      "antecedent_saturation",
+      "blockage_factor",
+      "demand_capacity_ratio"
+    ],
+    "split": "grouped by storm - no storm appears in both train and test",
+    "model": "HistGradientBoosting (scikit-learn)"
+  }
+}
