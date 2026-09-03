@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Urban Drain Digital Twin</title>
+
+  <!-- Libraries are served from our own folder, not a CDN, so the demo works
+       with no internet. Hackathon wifi is not to be trusted. -->
+  <link rel="stylesheet" href="/static/vendor/leaflet.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true"></div>
+    <div>
+      <h1>Urban Drain Digital Twin</h1>
+      <p class="brand-sub">Nairobi stormwater sandbox &middot; predictive flood modelling</p>
+    </div>
+  </div>
+
+  <div class="topbar-stats" id="topStats">
+    <div class="stat">
+      <span class="stat-value" id="statAtRisk">&mdash;</span>
+      <span class="stat-label">junctions at risk</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="statImpassable">&mdash;</span>
+      <span class="stat-label">impassable</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="statDepth">&mdash;</span>
+      <span class="stat-label">deepest point</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="statLatency">&mdash;</span>
+      <span class="stat-label">response</span>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ============ LEFT: the sandbox controls ============ -->
+  <aside class="panel panel-left">
+    <section class="card">
+      <h2>Storm controls</h2>
+      <p class="hint">Move a slider and the whole city is re-scored.</p>
+
+      <div class="control">
+        <label for="intensity">
+          Peak rainfall <output id="intensityOut">85</output> mm/hr
+        </label>
+        <input type="range" id="intensity" min="10" max="160" step="5" value="85">
+        <div class="scale"><span>drizzle</span><span>cloudburst</span></div>
+      </div>
+
+      <div class="control">
+        <label for="duration">
+          Duration <output id="durationOut">60</output> min
+        </label>
+        <input type="range" id="duration" min="20" max="180" step="10" value="60">
+      </div>
+
+      <div class="control">
+        <label for="saturation">
+          Ground already wet <output id="saturationOut">50</output>%
+        </label>
+        <input type="range" id="saturation" min="0" max="95" step="5" value="50">
+        <div class="scale"><span>dry season</span><span>day 5 of rain</span></div>
+      </div>
+
+      <div class="control">
+        <label for="blockage">
+          Drains blocked by silt &amp; waste <output id="blockageOut">20</output>%
+        </label>
+        <input type="range" id="blockage" min="0" max="70" step="5" value="20">
+        <div class="scale"><span>just cleaned</span><span>never cleaned</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Scenarios</h2>
+      <div class="preset-grid">
+        <button class="preset" data-preset="light">Light shower</button>
+        <button class="preset" data-preset="heavy">Heavy rain</button>
+        <button class="preset" data-preset="longrains">Long rains peak</button>
+        <button class="preset" data-preset="extreme">Extreme event</button>
+        <button class="preset preset-wide" data-preset="cutoff">
+          Water works cut off <small>demo scenario</small>
+        </button>
+      </div>
+
+      <div class="toggle-row">
+        <label class="switch">
+          <input type="checkbox" id="useModel" checked>
+          <span>Use AI model <small>(off = full physics simulation)</small></span>
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Emergency routing</h2>
+      <p class="hint">Find a way through the water.</p>
+
+      <div class="control">
+        <label for="origin">From</label>
+        <select id="origin"></select>
+      </div>
+      <div class="control">
+        <label for="destination">To</label>
+        <select id="destination"></select>
+      </div>
+
+      <div class="control">
+        <label>Travelling by</label>
+        <div class="mode-grid" id="modeGrid"></div>
+      </div>
+
+      <button class="primary" id="routeBtn">Calculate route</button>
+      <button class="secondary" id="compareBtn">Compare all travellers</button>
+
+      <div id="routeResult" class="route-result" hidden></div>
+      <div id="modeCompare" class="mode-compare" hidden></div>
+    </section>
+  </aside>
+
+  <!-- ============ CENTRE: the map ============ -->
+  <section class="map-wrap">
+    <div id="map"></div>
+
+    <div class="legend">
+      <h3>Flood risk</h3>
+      <ul>
+        <li><i style="background:#22c55e"></i> Safe</li>
+        <li><i style="background:#eab308"></i> Low</li>
+        <li><i style="background:#f97316"></i> Moderate</li>
+        <li><i style="background:#ef4444"></i> High</li>
+        <li><i style="background:#a21caf"></i> Severe &mdash; impassable</li>
+      </ul>
+      <h3 class="legend-sub">Routes</h3>
+      <ul>
+        <li><i class="line line-safe"></i> Safe route</li>
+        <li><i class="line line-fast"></i> Direct route</li>
+        <li><i class="line line-hazard"></i> Flooded road</li>
+      </ul>
+    </div>
+
+    <div class="map-toggles">
+      <label><input type="checkbox" id="showPipes" checked> Pipes</label>
+      <label><input type="checkbox" id="showHazards" checked> Flooded roads</label>
+      <label><input type="checkbox" id="showPlaces" checked> Landmarks</label>
+    </div>
+
+    <div id="loading" class="loading" hidden>Re-scoring network&hellip;</div>
+  </section>
+
+  <!-- ============ RIGHT: analysis ============ -->
+  <aside class="panel panel-right">
+    <section class="card">
+      <h2>Rainfall &amp; response</h2>
+      <!-- The canvas needs a wrapper with a fixed height. Chart.js in
+           responsive mode grows to fill its parent, and without this it
+           expands until it fills the whole column. -->
+      <div class="chart-box"><canvas id="stormChart"></canvas></div>
+      <p class="chart-caption" id="chartCaption"></p>
+    </section>
+
+    <section class="card">
+      <h2>Chronic bottlenecks</h2>
+      <p class="hint">Junctions that fail across the widest range of storms &mdash; fix these first.</p>
+      <ol class="bottleneck-list" id="bottleneckList"></ol>
+    </section>
+
+    <section class="card">
+      <h2>Costed repair plan</h2>
+      <p class="hint">Which single fix removes the most flooding per shilling.</p>
+      <ol class="repair-list" id="repairList"></ol>
+      <p class="cost-caveat" id="costCaveat"></p>
+    </section>
+
+    <section class="card">
+      <h2>Model performance</h2>
+      <div id="modelMetrics" class="metrics"></div>
+    </section>
+  </aside>
+
+</main>
+
+<div id="nodeDetail" class="node-detail" hidden>
+  <button class="close" id="closeDetail" aria-label="Close">&times;</button>
+  <div id="nodeDetailBody"></div>
+</div>
+
+<script src="/static/vendor/leaflet.js"></script>
+<script src="/static/vendor/chart.umd.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
